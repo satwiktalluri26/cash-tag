@@ -1,16 +1,44 @@
 import { useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { Tag, TrendingUp, Wallet, Shield } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useApp();
 
-  const handleGoogleLogin = () => {
-    login();
-    navigate('/connect');
-  };
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        });
+        const userInfo = await userInfoResponse.json();
+
+        login(
+          {
+            name: userInfo.name,
+            email: userInfo.email,
+            avatar: userInfo.picture,
+          },
+          tokenResponse.access_token
+        );
+
+        toast.success('Signed in successfully!');
+        navigate('/connect');
+      } catch (error) {
+        console.error('Failed to fetch user info:', error);
+        toast.error('Failed to get user information from Google');
+      }
+    },
+    onError: (error) => {
+      console.error('Login Failed:', error);
+      toast.error('Google Sign-In failed');
+    },
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+  });
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -43,7 +71,7 @@ export default function Login() {
               variant="google"
               size="xl"
               className="w-full"
-              onClick={handleGoogleLogin}
+              onClick={() => handleGoogleLogin()}
             >
               <GoogleIcon />
               Sign in with Google

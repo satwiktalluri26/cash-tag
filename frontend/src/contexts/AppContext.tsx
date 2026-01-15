@@ -47,6 +47,7 @@ interface AppContextType {
   isAuthenticated: boolean;
   isConnected: boolean;
   user: { name: string; email: string; avatar?: string } | null;
+  accessToken: string | null;
   people: Person[];
   sources: Source[];
   categories: Category[];
@@ -54,7 +55,7 @@ interface AppContextType {
   expenses: Expense[];
   balances: AccountBalance[];
   cachesWithBalances: CacheWithBalance[];
-  login: () => void;
+  login: (userData: { name: string; email: string; avatar?: string }, token: string) => void;
   logout: () => void;
   connectSheet: (url: string) => void;
   addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => void;
@@ -70,6 +71,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string; avatar?: string } | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [people, setPeople] = useState<Person[]>(mockPeople);
   const [sources] = useState<Source[]>(mockSources);
   const [categories, setCategories] = useState<Category[]>(mockCategories);
@@ -86,15 +88,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   });
 
-  const login = () => {
+  const login = (userData: { name: string; email: string; avatar?: string }, token: string) => {
     setIsAuthenticated(true);
-    setUser({ name: 'Demo User', email: 'demo@cashtag.app' });
+    setUser(userData);
+    setAccessToken(token);
   };
 
   const logout = () => {
     setIsAuthenticated(false);
     setIsConnected(false);
     setUser(null);
+    setAccessToken(null);
   };
 
   const connectSheet = (_url: string) => {
@@ -146,8 +150,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const selfId = people.find(p => p.relation === 'Self')?.id;
     return expenses
-      .filter(e => 
-        e.entryType === 'EXPENSE' && 
+      .filter(e =>
+        e.entryType === 'EXPENSE' &&
         new Date(e.date) >= startOfMonth &&
         e.peopleIds.includes(selfId || '')
       )
@@ -159,6 +163,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       isConnected,
       user,
+      accessToken,
       people,
       sources,
       categories,

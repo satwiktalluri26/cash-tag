@@ -24,7 +24,9 @@ interface AppContextType {
   refreshData: () => Promise<void>;
   addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
   addPerson: (name: string, relation: 'Self' | 'Friend' | 'Family') => Promise<Person>;
-  addCategory: (name: string, entryType: 'INCOME' | 'EXPENSE', color: string) => Promise<Category>;
+  addCategory: (name: string, entryType: 'INCOME' | 'EXPENSE', color: string, emoji?: string) => Promise<Category>;
+  addSubcategory: (name: string, parentCategoryId: string, color?: string) => Promise<Subcategory>;
+  addSource: (name: string, type: 'BANK' | 'CARD' | 'CASH') => Promise<Source>;
   getMonthlyTotal: (type: 'INCOME' | 'EXPENSE') => number;
   getPersonalSpending: () => number;
 }
@@ -166,12 +168,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return newPerson;
   };
 
-  const addCategory = async (name: string, entryType: 'INCOME' | 'EXPENSE', color: string): Promise<Category> => {
+  const addCategory = async (name: string, entryType: 'INCOME' | 'EXPENSE', color: string, emoji?: string): Promise<Category> => {
     const newCategory: Category = {
       id: crypto.randomUUID(),
       name,
       entryType,
       color,
+      emoji,
       createdAt: new Date(),
     };
 
@@ -186,6 +189,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     return newCategory;
+  };
+
+  const addSubcategory = async (name: string, parentCategoryId: string, color?: string): Promise<Subcategory> => {
+    const newSub: Subcategory = {
+      id: crypto.randomUUID(),
+      parentCategoryId,
+      name,
+      color,
+      createdAt: new Date(),
+    };
+
+    setSubcategories(prev => [...prev, newSub]);
+
+    if (db && spreadsheetId) {
+      try {
+        await db.addSubcategory(spreadsheetId, newSub);
+      } catch (err) {
+        console.error('Failed to save subcategory:', err);
+        setError('Failed to save subcategory to Google Sheets');
+      }
+    }
+    return newSub;
+  };
+
+  const addSource = async (name: string, type: 'BANK' | 'CARD' | 'CASH'): Promise<Source> => {
+    const newSource: Source = {
+      id: crypto.randomUUID(),
+      name,
+      type,
+      createdAt: new Date(),
+    };
+
+    setSources(prev => [...prev, newSource]);
+
+    if (db && spreadsheetId) {
+      try {
+        await db.addAccount(spreadsheetId, newSource);
+      } catch (err) {
+        console.error('Failed to save source:', err);
+        setError('Failed to save source to Google Sheets');
+      }
+    }
+    return newSource;
   };
 
   const getMonthlyTotal = (type: 'INCOME' | 'EXPENSE') => {
@@ -233,6 +279,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addExpense,
       addPerson,
       addCategory,
+      addSubcategory,
+      addSource,
       getMonthlyTotal,
       getPersonalSpending,
     }}>

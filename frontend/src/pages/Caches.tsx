@@ -2,17 +2,59 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Wallet, CreditCard, Banknote, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, CreditCard, Banknote, TrendingUp, TrendingDown, Plus, Loader2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function Caches() {
-  const { cachesWithBalances } = useApp();
+  const { cachesWithBalances, addSource } = useApp();
+  const [showAddSource, setShowAddSource] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newType, setNewType] = useState<'BANK' | 'CARD' | 'CASH'>('BANK');
 
   const totalBalance = cachesWithBalances.reduce((sum, c) => sum + c.currentBalance, 0);
 
+  const handleAddSource = async () => {
+    if (!newName.trim()) {
+      toast.error('Please enter a name');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await addSource(newName.trim(), newType);
+      toast.success('Source added!');
+      setShowAddSource(false);
+      setNewName('');
+      setNewType('BANK');
+    } catch (err) {
+      toast.error('Failed to add source');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(Math.abs(amount));
@@ -52,14 +94,25 @@ export default function Caches() {
 
         {/* Individual Caches */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Your Accounts</h2>
-          
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Your Accounts</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-primary"
+              onClick={() => setShowAddSource(true)}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Source
+            </Button>
+          </div>
+
           {cachesWithBalances.map((cache, index) => {
             const Icon = getIcon(cache.type);
             const isPositive = cache.currentBalance >= 0;
 
             return (
-              <Card 
+              <Card
                 key={cache.id}
                 className="animate-slide-up cursor-pointer hover:shadow-soft transition-shadow"
                 style={{ animationDelay: `${100 + index * 50}ms` }}
@@ -69,19 +122,19 @@ export default function Caches() {
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center",
                       cache.type === 'BANK' ? 'bg-blue-100 text-blue-600' :
-                      cache.type === 'CARD' ? 'bg-purple-100 text-purple-600' :
-                      'bg-green-100 text-green-600'
+                        cache.type === 'CARD' ? 'bg-purple-100 text-purple-600' :
+                          'bg-green-100 text-green-600'
                     )}>
                       <Icon className="w-6 h-6" />
                     </div>
-                    
+
                     <div className="flex-1">
                       <h3 className="font-semibold text-foreground">{cache.name}</h3>
                       <p className="text-sm text-muted-foreground capitalize">
                         {cache.type.toLowerCase()}
                       </p>
                     </div>
-                    
+
                     <div className="text-right">
                       <p className={cn(
                         "text-xl font-bold",
@@ -108,6 +161,46 @@ export default function Caches() {
           </Card>
         </div>
       </div>
+
+      {/* Add Source Dialog */}
+      <Dialog open={showAddSource} onOpenChange={setShowAddSource}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Source</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="source-name">Account Name</Label>
+              <Input
+                id="source-name"
+                placeholder="e.g. HDFC Bank, Amex Card"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="source-type">Type</Label>
+              <Select value={newType} onValueChange={(v) => setNewType(v as any)}>
+                <SelectTrigger id="source-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BANK">Bank Account</SelectItem>
+                  <SelectItem value="CARD">Credit Card</SelectItem>
+                  <SelectItem value="CASH">Cash/Wallet</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddSource(false)}>Cancel</Button>
+            <Button onClick={handleAddSource} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Add Source
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

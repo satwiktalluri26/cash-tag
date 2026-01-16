@@ -12,6 +12,7 @@ export interface Source {
   id: string;
   name: string;
   type: 'BANK' | 'CARD' | 'CASH';
+  startingBalance: number;
   notes?: string;
   createdAt: Date;
 }
@@ -19,8 +20,7 @@ export interface Source {
 export interface Category {
   id: string;
   name: string;
-  entryType: EntryType;
-  color: string;
+  emoji?: string;
   createdAt: Date;
 }
 

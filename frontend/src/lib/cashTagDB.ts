@@ -9,9 +9,9 @@ export interface SheetConfig {
 
 export const SHEETS_CONFIG: SheetConfig[] = [
     { title: 'transactions', headers: ['id', 'date', 'amount', 'entryType', 'categoryId', 'subcategoryId', 'sourceId', 'peopleIds', 'createdAt', 'note'] },
-    { title: 'accounts', headers: ['id', 'name', 'type', 'createdAt'] },
+    { title: 'accounts', headers: ['id', 'name', 'type', 'startingBalance', 'createdAt'] },
     { title: 'person', headers: ['id', 'name', 'relation', 'createdAt'] },
-    { title: 'category', headers: ['id', 'name', 'entryType', 'color', 'createdAt'] },
+    { title: 'category', headers: ['id', 'name', 'emoji', 'createdAt'] },
     { title: 'subcategory', headers: ['id', 'parentCategoryId', 'name', 'createdAt'] }
 ];
 
@@ -88,17 +88,17 @@ export class CashTagDB {
                 relation: 'Self',
                 createdAt: new Date()
             }),
-            this.service.appendValues(spreadsheetId, 'accounts!A1', [[
-                cashId,
-                'Cash Wallet',
-                'CASH',
-                new Date().toISOString()
-            ]]),
+            this.addAccount(spreadsheetId, {
+                id: cashId,
+                name: 'Cash Wallet',
+                type: 'CASH',
+                startingBalance: 0,
+                createdAt: new Date()
+            }),
             this.addCategory(spreadsheetId, {
                 id: crypto.randomUUID(),
                 name: 'Food & Dining',
-                entryType: 'EXPENSE',
-                color: '#ef4444',
+                emoji: '🍔',
                 createdAt: new Date()
             })
         ]);
@@ -139,7 +139,8 @@ export class CashTagDB {
             id: row[0],
             name: row[1],
             type: row[2],
-            createdAt: new Date(row[3])
+            startingBalance: parseFloat(row[3] || '0'),
+            createdAt: new Date(row[4])
         }));
     }
 
@@ -156,9 +157,8 @@ export class CashTagDB {
         return this.getTableData(spreadsheetId, 'category', (row) => ({
             id: row[0],
             name: row[1],
-            entryType: row[2],
-            color: row[3],
-            createdAt: new Date(row[4])
+            emoji: row[2] || undefined,
+            createdAt: new Date(row[3])
         }));
     }
 
@@ -207,10 +207,30 @@ export class CashTagDB {
         const row = [
             category.id,
             category.name,
-            category.entryType,
-            category.color,
+            category.emoji || '',
             category.createdAt.toISOString()
         ];
         return this.appendToTable(spreadsheetId, 'category', [row]);
+    }
+
+    async addSubcategory(spreadsheetId: string, subcategory: any) {
+        const row = [
+            subcategory.id,
+            subcategory.parentCategoryId,
+            subcategory.name,
+            subcategory.createdAt.toISOString()
+        ];
+        return this.appendToTable(spreadsheetId, 'subcategory', [row]);
+    }
+
+    async addAccount(spreadsheetId: string, account: any) {
+        const row = [
+            account.id,
+            account.name,
+            account.type,
+            account.startingBalance,
+            account.createdAt.toISOString()
+        ];
+        return this.appendToTable(spreadsheetId, 'accounts', [row]);
     }
 }

@@ -63,6 +63,12 @@ export default function AddEntry() {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState(CATEGORY_COLORS[0]);
+  const [newCategoryEmoji, setNewCategoryEmoji] = useState('💰');
+
+  // Add Subcategory Dialog
+  const [showAddSubcategory, setShowAddSubcategory] = useState(false);
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [newSubcategoryColor, setNewSubcategoryColor] = useState(CATEGORY_COLORS[0]);
 
   const filteredCategories = categories.filter(c => c.entryType === entryType);
   const filteredSubcategories = subcategories.filter(s => s.parentCategoryId === categoryId);
@@ -127,14 +133,37 @@ export default function AddEntry() {
       return;
     }
     try {
-      const newCat = await addCategory(newCategoryName.trim(), entryType, newCategoryColor);
+      const newCat = await addCategory(newCategoryName.trim(), entryType, newCategoryColor, newCategoryEmoji);
       setCategoryId(newCat.id);
       setNewCategoryName('');
       setNewCategoryColor(CATEGORY_COLORS[0]);
+      setNewCategoryEmoji('💰');
       setShowAddCategory(false);
       toast.success('Category added!');
     } catch (err) {
       toast.error('Failed to add category');
+    }
+  };
+
+  const { addSubcategory } = useApp();
+  const handleAddSubcategory = async () => {
+    if (!newSubcategoryName.trim()) {
+      toast.error('Please enter a subcategory name');
+      return;
+    }
+    if (!categoryId) {
+      toast.error('Please select a parent category first');
+      return;
+    }
+    try {
+      const newSub = await addSubcategory(newSubcategoryName.trim(), categoryId, newSubcategoryColor);
+      setSubcategoryId(newSub.id);
+      setNewSubcategoryName('');
+      setNewSubcategoryColor(CATEGORY_COLORS[0]);
+      setShowAddSubcategory(false);
+      toast.success('Subcategory added!');
+    } catch (err) {
+      toast.error('Failed to add subcategory');
     }
   };
 
@@ -183,7 +212,7 @@ export default function AddEntry() {
               "absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-semibold",
               isExpense ? "text-expense" : "text-income"
             )}>
-              $
+              ₹
             </span>
             <Input
               id="amount"
@@ -227,10 +256,16 @@ export default function AddEntry() {
               {filteredCategories.map(cat => (
                 <SelectItem key={cat.id} value={cat.id}>
                   <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: cat.color }}
-                    />
+                    {cat.emoji ? (
+                      <span className="text-lg w-5 h-5 flex items-center justify-center">
+                        {cat.emoji}
+                      </span>
+                    ) : (
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                    )}
                     {cat.name}
                   </div>
                 </SelectItem>
@@ -240,23 +275,42 @@ export default function AddEntry() {
         </div>
 
         {/* Subcategory */}
-        {filteredSubcategories.length > 0 && (
-          <div className="space-y-2 animate-fade-in">
-            <Label>Subcategory</Label>
-            <Select value={subcategoryId} onValueChange={setSubcategoryId}>
-              <SelectTrigger className="h-12">
-                <SelectValue placeholder="Select subcategory (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredSubcategories.map(sub => (
-                  <SelectItem key={sub.id} value={sub.id}>
-                    {sub.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="space-y-2 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <Label>Subcategory (optional)</Label>
+            {categoryId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-primary"
+                onClick={() => setShowAddSubcategory(true)}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Sub
+              </Button>
+            )}
           </div>
-        )}
+          <Select value={subcategoryId} onValueChange={setSubcategoryId}>
+            <SelectTrigger className="h-12">
+              <SelectValue placeholder={categoryId ? "Select subcategory" : "Select category first"} />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredSubcategories.map(sub => (
+                <SelectItem key={sub.id} value={sub.id}>
+                  <div className="flex items-center gap-2">
+                    {sub.color && (
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: sub.color }}
+                      />
+                    )}
+                    {sub.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Source */}
         <div className="space-y-2">
@@ -437,6 +491,23 @@ export default function AddEntry() {
               />
             </div>
             <div className="space-y-2">
+              <Label>Emoji</Label>
+              <div className="flex flex-wrap gap-2 text-2xl">
+                {['💰', '🛒', '🍔', '🚗', '🏠', '🎁', '🏥', '🎮', '💡', '👕', '📱', '✈️'].map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => setNewCategoryEmoji(emoji)}
+                    className={cn(
+                      "w-10 h-10 flex items-center justify-center rounded-lg transition-all",
+                      newCategoryEmoji === emoji ? "bg-primary/20 ring-2 ring-primary" : "bg-secondary hover:bg-secondary/80"
+                    )}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
               <Label>Color</Label>
               <div className="flex flex-wrap gap-2">
                 {CATEGORY_COLORS.map(color => (
@@ -456,6 +527,45 @@ export default function AddEntry() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddCategory(false)}>Cancel</Button>
             <Button onClick={handleAddCategory}>Add Category</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Subcategory Dialog */}
+      <Dialog open={showAddSubcategory} onOpenChange={setShowAddSubcategory}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Subcategory</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Subcategory Name</Label>
+              <Input
+                placeholder="Enter subcategory name"
+                value={newSubcategoryName}
+                onChange={(e) => setNewSubcategoryName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORY_COLORS.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => setNewSubcategoryColor(color)}
+                    className={cn(
+                      "w-8 h-8 rounded-full transition-all",
+                      newSubcategoryColor === color && "ring-2 ring-offset-2 ring-primary"
+                    )}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddSubcategory(false)}>Cancel</Button>
+            <Button onClick={handleAddSubcategory}>Add Subcategory</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

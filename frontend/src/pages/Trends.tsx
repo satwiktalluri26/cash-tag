@@ -2,15 +2,15 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
   Tooltip,
   LineChart,
   Line,
@@ -23,9 +23,9 @@ export default function Trends() {
   const { expenses, categories } = useApp();
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -34,7 +34,7 @@ export default function Trends() {
   // Group expenses by category for this month
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  
+
   const monthlyExpenses = expenses.filter(
     e => e.entryType === 'EXPENSE' && new Date(e.date) >= startOfMonth
   );
@@ -74,8 +74,8 @@ export default function Trends() {
   const dailySpending = last7Days.map(date => {
     const dayExpenses = expenses.filter(e => {
       const expDate = new Date(e.date);
-      return e.entryType === 'EXPENSE' && 
-             expDate.toDateString() === date.toDateString();
+      return e.entryType === 'EXPENSE' &&
+        expDate.toDateString() === date.toDateString();
     });
     return {
       day: date.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -156,8 +156,8 @@ export default function Trends() {
                 <div className="flex-1 space-y-2">
                   {categoryTotals.slice(0, 4).map((cat) => (
                     <div key={cat.categoryId} className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
+                      <div
+                        className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: cat.color }}
                       />
                       <span className="text-sm text-foreground flex-1 truncate">{cat.name}</span>
@@ -186,25 +186,25 @@ export default function Trends() {
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailySpending}>
-                  <XAxis 
-                    dataKey="day" 
-                    axisLine={false} 
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis hide />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => formatCurrency(value)}
                     labelStyle={{ color: 'hsl(var(--foreground))' }}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px'
                     }}
                   />
-                  <Bar 
-                    dataKey="amount" 
-                    fill="hsl(var(--primary))" 
+                  <Bar
+                    dataKey="amount"
+                    fill="hsl(var(--primary))"
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
@@ -223,18 +223,18 @@ export default function Trends() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={comparisonData} layout="vertical">
                   <XAxis type="number" hide />
-                  <YAxis 
-                    type="category" 
-                    dataKey="name" 
-                    axisLine={false} 
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                     width={60}
                   />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px'
                     }}
@@ -266,7 +266,7 @@ export default function Trends() {
           {expenses.map((expense, index) => {
             const category = categories.find(c => c.id === expense.categoryId);
             return (
-              <Card 
+              <Card
                 key={expense.id}
                 className="animate-slide-up"
                 style={{ animationDelay: `${250 + index * 30}ms` }}
@@ -283,9 +283,9 @@ export default function Trends() {
                       {category?.name || 'Unknown'}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(expense.date).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric' 
+                      {new Date(expense.date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
                       })}
                     </p>
                   </div>

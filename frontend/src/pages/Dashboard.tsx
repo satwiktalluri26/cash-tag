@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
   const { user, getMonthlyTotal, getPersonalSpending, expenses, categories, sources } = useApp();
-  
+
   const monthlyExpense = getMonthlyTotal('EXPENSE');
   const monthlyIncome = getMonthlyTotal('INCOME');
   const personalSpending = getPersonalSpending();
@@ -15,9 +15,9 @@ export default function Dashboard() {
   const recentExpenses = expenses.slice(0, 5);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(amount);
@@ -31,8 +31,8 @@ export default function Dashboard() {
       <div className="space-y-6">
         {/* Greeting */}
         <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
-          <p className="text-muted-foreground">Welcome back,</p>
-          <h1 className="text-2xl font-bold text-foreground">
+          <p className="text-muted-foreground">Hello,</p>
+          <h1 className="text-3xl font-bold text-foreground">
             {user?.name || 'Friend'} 👋
           </h1>
         </div>
@@ -74,8 +74,8 @@ export default function Dashboard() {
         <div className="space-y-3 animate-slide-up" style={{ animationDelay: '150ms' }}>
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Recent</h2>
-            <Link 
-              to="/trends" 
+            <Link
+              to="/trends"
               className="text-sm text-primary font-medium flex items-center gap-1 hover:underline"
             >
               View all <ChevronRight className="w-4 h-4" />
@@ -152,9 +152,9 @@ function TransactionRow({
   style?: React.CSSProperties;
 }) {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(amount);

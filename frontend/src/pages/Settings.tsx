@@ -2,10 +2,10 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  FileSpreadsheet, 
-  LogOut, 
-  User, 
+import {
+  FileSpreadsheet,
+  LogOut,
+  User,
   ChevronRight,
   Tag,
   Wallet,
@@ -15,7 +15,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
-  const { user, logout } = useApp();
+  const { user, logout, sourcesWithBalances, categories, people } = useApp();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -25,17 +25,10 @@ export default function Settings() {
 
   const settingsGroups = [
     {
-      title: 'Data',
-      items: [
-        { icon: FileSpreadsheet, label: 'Connected Sheet', value: 'docs.google.com/...', action: () => {} },
-      ],
-    },
-    {
       title: 'Configuration',
       items: [
-        { icon: Layers, label: 'Categories', value: '6 categories', action: () => {} },
-        { icon: Wallet, label: 'Caches', value: '3 accounts', action: () => {} },
-        { icon: Users, label: 'People', value: '3 people', action: () => {} },
+        { icon: Layers, label: 'Categories', value: `${categories.length} categories`, action: () => navigate('/categories') },
+        { icon: Users, label: 'People', value: `${people.length} people`, action: () => navigate('/people') },
       ],
     },
   ];
@@ -44,24 +37,34 @@ export default function Settings() {
     <AppLayout title="Settings">
       <div className="space-y-6">
         {/* Profile Card */}
-        <Card className="animate-slide-up">
+        <Card
+          className="animate-slide-up cursor-pointer hover:bg-accent/50 transition-colors"
+          onClick={() => navigate('/profile')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-7 h-7 text-primary" />
+              <div className="w-14 h-14 rounded-full border-2 border-primary/10 p-0.5">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="w-7 h-7 text-primary" />
+                  </div>
+                )}
               </div>
               <div className="flex-1">
                 <h2 className="font-semibold text-foreground">{user?.name || 'Demo User'}</h2>
-                <p className="text-sm text-muted-foreground">{user?.email || 'demo@cachetag.app'}</p>
+                <p className="text-sm text-muted-foreground">{user?.email || 'demo@cashtag.app'}</p>
               </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
 
         {/* Settings Groups */}
         {settingsGroups.map((group, groupIndex) => (
-          <div 
-            key={group.title} 
+          <div
+            key={group.title}
             className="space-y-2 animate-slide-up"
             style={{ animationDelay: `${50 + groupIndex * 50}ms` }}
           >
@@ -93,7 +96,7 @@ export default function Settings() {
         <div className="text-center py-4 animate-slide-up" style={{ animationDelay: '150ms' }}>
           <div className="inline-flex items-center gap-2 text-muted-foreground mb-2">
             <Tag className="w-4 h-4" />
-            <span className="font-medium">CacheTag</span>
+            <span className="font-medium">CashTag</span>
           </div>
           <p className="text-sm text-muted-foreground">Version 1.0.0</p>
         </div>

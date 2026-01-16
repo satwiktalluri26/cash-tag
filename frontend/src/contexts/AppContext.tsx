@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from 'react';
-import type { Person, Source, Category, Subcategory, Expense, AccountBalance, CacheWithBalance } from '@/types/finance';
+import type { Person, Source, Category, Subcategory, Expense, AccountBalance, SourceWithBalance } from '@/types/finance';
 import { CashTagDB } from '@/lib/cashTagDB';
 
 interface AppContextType {
@@ -15,7 +15,7 @@ interface AppContextType {
   subcategories: Subcategory[];
   expenses: Expense[];
   balances: AccountBalance[];
-  cachesWithBalances: CacheWithBalance[];
+  sourcesWithBalances: SourceWithBalance[];
   spreadsheetId: string | null;
   spreadsheetUrl: string | null;
   login: (userData: { name: string; email: string; avatar?: string }, token: string) => void;
@@ -24,9 +24,12 @@ interface AppContextType {
   refreshData: () => Promise<void>;
   addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
   addPerson: (name: string, relation: 'Self' | 'Friend' | 'Family') => Promise<Person>;
-  addCategory: (name: string, entryType: 'INCOME' | 'EXPENSE', color: string, emoji?: string) => Promise<Category>;
-  addSubcategory: (name: string, parentCategoryId: string, color?: string) => Promise<Subcategory>;
-  addSource: (name: string, type: 'BANK' | 'CARD' | 'CASH') => Promise<Source>;
+  addCategory: (name: string, emoji?: string) => Promise<Category>;
+  addSubcategory: (name: string, parentCategoryId: string) => Promise<Subcategory>;
+  addSource: (name: string, type: 'BANK' | 'CARD' | 'CASH', startingBalance: number) => Promise<Source>;
+  updatePerson: (person: Person) => Promise<void>;
+  updateCategory: (category: Category) => Promise<void>;
+  updateSubcategory: (subcategory: Subcategory) => Promise<void>;
   getMonthlyTotal: (type: 'INCOME' | 'EXPENSE') => number;
   getPersonalSpending: () => number;
 }
@@ -52,13 +55,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const db = useMemo(() => accessToken ? new CashTagDB(accessToken) : null, [accessToken]);
 
-  const cachesWithBalances: CacheWithBalance[] = sources.map(source => {
-    const latestBalance = balances
-      .filter(b => b.sourceId === source.id)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+  const sourcesWithBalances: SourceWithBalance[] = sources.map(source => {
+    const sourceExpenses = expenses.filter(e => e.sourceId === source.id);
+    const transactionsSum = sourceExpenses.reduce((sum, e) => {
+      return e.entryType === 'INCOME' ? sum + e.amount : sum - e.amount;
+    }, 0);
+
     return {
       ...source,
-      currentBalance: latestBalance?.balance || 0,
+      currentBalance: (source.startingBalance || 0) + transactionsSum,
     };
   });
 
@@ -168,12 +173,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return newPerson;
   };
 
-  const addCategory = async (name: string, entryType: 'INCOME' | 'EXPENSE', color: string, emoji?: string): Promise<Category> => {
+  const addCategory = async (name: string, emoji?: string): Promise<Category> => {
     const newCategory: Category = {
       id: crypto.randomUUID(),
       name,
-      entryType,
-      color,
       emoji,
       createdAt: new Date(),
     };
@@ -191,12 +194,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return newCategory;
   };
 
-  const addSubcategory = async (name: string, parentCategoryId: string, color?: string): Promise<Subcategory> => {
+  const addSubcategory = async (name: string, parentCategoryId: string): Promise<Subcategory> => {
     const newSub: Subcategory = {
       id: crypto.randomUUID(),
       parentCategoryId,
       name,
-      color,
       createdAt: new Date(),
     };
 
@@ -213,11 +215,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return newSub;
   };
 
-  const addSource = async (name: string, type: 'BANK' | 'CARD' | 'CASH'): Promise<Source> => {
+  const addSource = async (name: string, type: 'BANK' | 'CARD' | 'CASH', startingBalance: number): Promise<Source> => {
     const newSource: Source = {
       id: crypto.randomUUID(),
       name,
       type,
+      startingBalance,
       createdAt: new Date(),
     };
 
@@ -232,6 +235,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     return newSource;
+  };
+
+  const updatePerson = async (person: Person) => {
+    setPeople(prev => prev.map(p => p.id === person.id ? person : p));
+    if (db && spreadsheetId) {
+      await db.updatePerson(spreadsheetId, person);
+    }
+  };
+
+  const updateCategory = async (category: Category) => {
+    setCategories(prev => prev.map(c => c.id === category.id ? category : c));
+    if (db && spreadsheetId) {
+      await db.updateCategory(spreadsheetId, category);
+    }
+  };
+
+  const updateSubcategory = async (subcategory: Subcategory) => {
+    setSubcategories(prev => prev.map(s => s.id === subcategory.id ? subcategory : s));
+    if (db && spreadsheetId) {
+      await db.updateSubcategory(spreadsheetId, subcategory);
+    }
   };
 
   const getMonthlyTotal = (type: 'INCOME' | 'EXPENSE') => {
@@ -271,7 +295,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       subcategories,
       expenses,
       balances,
-      cachesWithBalances,
+      sourcesWithBalances,
       login,
       logout,
       connectSheet,
@@ -281,6 +305,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addCategory,
       addSubcategory,
       addSource,
+      updatePerson,
+      updateCategory,
+      updateSubcategory,
       getMonthlyTotal,
       getPersonalSpending,
     }}>

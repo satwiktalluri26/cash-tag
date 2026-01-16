@@ -23,27 +23,34 @@ import {
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-export default function Caches() {
-  const { cachesWithBalances, addSource } = useApp();
+export default function Sources() {
+  const { sourcesWithBalances, addSource } = useApp();
   const [showAddSource, setShowAddSource] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<'BANK' | 'CARD' | 'CASH'>('BANK');
+  const [newStartingBalance, setNewStartingBalance] = useState('');
 
-  const totalBalance = cachesWithBalances.reduce((sum, c) => sum + c.currentBalance, 0);
+  const totalBalance = sourcesWithBalances.reduce((sum, c) => sum + c.currentBalance, 0);
 
   const handleAddSource = async () => {
     if (!newName.trim()) {
       toast.error('Please enter a name');
       return;
     }
+    const exists = sourcesWithBalances.some(c => c.name.toLowerCase() === newName.trim().toLowerCase());
+    if (exists) {
+      toast.error('A source with this name already exists');
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await addSource(newName.trim(), newType);
+      await addSource(newName.trim(), newType, parseFloat(newStartingBalance) || 0);
       toast.success('Source added!');
       setShowAddSource(false);
       setNewName('');
       setNewType('BANK');
+      setNewStartingBalance('');
     } catch (err) {
       toast.error('Failed to add source');
     } finally {
@@ -87,12 +94,12 @@ export default function Caches() {
               )}
             </div>
             <p className="text-sm opacity-60 mt-2">
-              Across {cachesWithBalances.length} accounts
+              Across {sourcesWithBalances.length} accounts
             </p>
           </CardContent>
         </Card>
 
-        {/* Individual Caches */}
+        {/* Individual Sources */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Your Accounts</h2>
@@ -107,13 +114,13 @@ export default function Caches() {
             </Button>
           </div>
 
-          {cachesWithBalances.map((cache, index) => {
-            const Icon = getIcon(cache.type);
-            const isPositive = cache.currentBalance >= 0;
+          {sourcesWithBalances.map((source, index) => {
+            const Icon = getIcon(source.type);
+            const isPositive = source.currentBalance >= 0;
 
             return (
               <Card
-                key={cache.id}
+                key={source.id}
                 className="animate-slide-up cursor-pointer hover:shadow-soft transition-shadow"
                 style={{ animationDelay: `${100 + index * 50}ms` }}
               >
@@ -121,17 +128,17 @@ export default function Caches() {
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center",
-                      cache.type === 'BANK' ? 'bg-blue-100 text-blue-600' :
-                        cache.type === 'CARD' ? 'bg-purple-100 text-purple-600' :
+                      source.type === 'BANK' ? 'bg-blue-100 text-blue-600' :
+                        source.type === 'CARD' ? 'bg-purple-100 text-purple-600' :
                           'bg-green-100 text-green-600'
                     )}>
                       <Icon className="w-6 h-6" />
                     </div>
 
                     <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">{cache.name}</h3>
+                      <h3 className="font-semibold text-foreground">{source.name}</h3>
                       <p className="text-sm text-muted-foreground capitalize">
-                        {cache.type.toLowerCase()}
+                        {source.type.toLowerCase()}
                       </p>
                     </div>
 
@@ -140,7 +147,7 @@ export default function Caches() {
                         "text-xl font-bold",
                         isPositive ? "text-income" : "text-expense"
                       )}>
-                        {isPositive ? '' : '-'}{formatCurrency(cache.currentBalance)}
+                        {isPositive ? '' : '-'}{formatCurrency(source.currentBalance)}
                       </p>
                     </div>
                   </div>
@@ -190,6 +197,20 @@ export default function Caches() {
                   <SelectItem value="CASH">Cash/Wallet</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="source-balance">Starting Balance</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                <Input
+                  id="source-balance"
+                  type="number"
+                  placeholder="0.00"
+                  value={newStartingBalance}
+                  onChange={(e) => setNewStartingBalance(e.target.value)}
+                  className="pl-7"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -70,7 +70,6 @@ export default function AddEntry() {
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [newSubcategoryColor, setNewSubcategoryColor] = useState(CATEGORY_COLORS[0]);
 
-  const filteredCategories = categories.filter(c => c.entryType === entryType);
   const filteredSubcategories = subcategories.filter(s => s.parentCategoryId === categoryId);
 
   const isExpense = entryType === 'EXPENSE';
@@ -115,6 +114,11 @@ export default function AddEntry() {
       toast.error('Please enter a name');
       return;
     }
+    const exists = people.some(p => p.name.toLowerCase() === newPersonName.trim().toLowerCase());
+    if (exists) {
+      toast.error('A person with this name already exists');
+      return;
+    }
     try {
       const newPerson = await addPerson(newPersonName.trim(), newPersonRelation);
       setSelectedPeople(prev => [...prev, newPerson.id]);
@@ -132,11 +136,15 @@ export default function AddEntry() {
       toast.error('Please enter a category name');
       return;
     }
+    const exists = categories.some(c => c.name.toLowerCase() === newCategoryName.trim().toLowerCase());
+    if (exists) {
+      toast.error('A category with this name already exists');
+      return;
+    }
     try {
-      const newCat = await addCategory(newCategoryName.trim(), entryType, newCategoryColor, newCategoryEmoji);
+      const newCat = await addCategory(newCategoryName.trim(), newCategoryEmoji);
       setCategoryId(newCat.id);
       setNewCategoryName('');
-      setNewCategoryColor(CATEGORY_COLORS[0]);
       setNewCategoryEmoji('💰');
       setShowAddCategory(false);
       toast.success('Category added!');
@@ -155,11 +163,18 @@ export default function AddEntry() {
       toast.error('Please select a parent category first');
       return;
     }
+    const exists = subcategories.some(s =>
+      s.parentCategoryId === categoryId &&
+      s.name.toLowerCase() === newSubcategoryName.trim().toLowerCase()
+    );
+    if (exists) {
+      toast.error('A subcategory with this name already exists in this category');
+      return;
+    }
     try {
-      const newSub = await addSubcategory(newSubcategoryName.trim(), categoryId, newSubcategoryColor);
+      const newSub = await addSubcategory(newSubcategoryName.trim(), categoryId);
       setSubcategoryId(newSub.id);
       setNewSubcategoryName('');
-      setNewSubcategoryColor(CATEGORY_COLORS[0]);
       setShowAddSubcategory(false);
       toast.success('Subcategory added!');
     } catch (err) {
@@ -175,8 +190,6 @@ export default function AddEntry() {
           <button
             onClick={() => {
               setEntryType('EXPENSE');
-              setCategoryId('');
-              setSubcategoryId('');
             }}
             className={cn(
               "flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200",
@@ -190,8 +203,6 @@ export default function AddEntry() {
           <button
             onClick={() => {
               setEntryType('INCOME');
-              setCategoryId('');
-              setSubcategoryId('');
             }}
             className={cn(
               "flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200",
@@ -253,18 +264,13 @@ export default function AddEntry() {
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
-              {filteredCategories.map(cat => (
+              {categories.map(cat => (
                 <SelectItem key={cat.id} value={cat.id}>
                   <div className="flex items-center gap-2">
-                    {cat.emoji ? (
+                    {cat.emoji && (
                       <span className="text-lg w-5 h-5 flex items-center justify-center">
                         {cat.emoji}
                       </span>
-                    ) : (
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: cat.color }}
-                      />
                     )}
                     {cat.name}
                   </div>
@@ -298,12 +304,6 @@ export default function AddEntry() {
               {filteredSubcategories.map(sub => (
                 <SelectItem key={sub.id} value={sub.id}>
                   <div className="flex items-center gap-2">
-                    {sub.color && (
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: sub.color }}
-                      />
-                    )}
                     {sub.name}
                   </div>
                 </SelectItem>
@@ -373,24 +373,49 @@ export default function AddEntry() {
               Add Person
             </Button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {people.map(person => (
-              <button
-                key={person.id}
-                onClick={() => togglePerson(person.id)}
-                className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border",
-                  selectedPeople.includes(person.id)
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-secondary text-secondary-foreground border-transparent hover:border-border"
-                )}
-              >
-                {selectedPeople.includes(person.id) && (
-                  <Check className="w-3 h-3 inline mr-1" />
-                )}
-                {person.name}
-              </button>
-            ))}
+          <div className="flex flex-col gap-2">
+            <Select
+              value=""
+              onValueChange={(val) => {
+                if (val && !selectedPeople.includes(val)) {
+                  setSelectedPeople(prev => [...prev, val]);
+                }
+              }}
+            >
+              <SelectTrigger className="h-12">
+                <SelectValue placeholder="Select people" />
+              </SelectTrigger>
+              <SelectContent>
+                {people.map(person => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedPeople.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedPeople.map(personId => {
+                  const person = people.find(p => p.id === personId);
+                  if (!person) return null;
+                  return (
+                    <div
+                      key={personId}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-medium"
+                    >
+                      {person.name}
+                      <button
+                        onClick={() => setSelectedPeople(prev => prev.filter(id => id !== personId))}
+                        className="p-0.5 hover:bg-white/20 rounded-full transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -479,7 +504,7 @@ export default function AddEntry() {
       <Dialog open={showAddCategory} onOpenChange={setShowAddCategory}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add {isExpense ? 'Expense' : 'Income'} Category</DialogTitle>
+            <DialogTitle>Add Category</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -507,22 +532,6 @@ export default function AddEntry() {
                 ))}
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORY_COLORS.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setNewCategoryColor(color)}
-                    className={cn(
-                      "w-8 h-8 rounded-full transition-all",
-                      newCategoryColor === color && "ring-2 ring-offset-2 ring-primary"
-                    )}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddCategory(false)}>Cancel</Button>
@@ -545,22 +554,6 @@ export default function AddEntry() {
                 value={newSubcategoryName}
                 onChange={(e) => setNewSubcategoryName(e.target.value)}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORY_COLORS.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setNewSubcategoryColor(color)}
-                    className={cn(
-                      "w-8 h-8 rounded-full transition-all",
-                      newSubcategoryColor === color && "ring-2 ring-offset-2 ring-primary"
-                    )}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
             </div>
           </div>
           <DialogFooter>

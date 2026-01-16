@@ -53,6 +53,6 @@ export interface AccountBalance {
   createdAt: Date;
 }
 
-export interface CacheWithBalance extends Source {
+export interface SourceWithBalance extends Source {
   currentBalance: number;
 }

@@ -173,6 +173,22 @@ export class CashTagDB {
 
     // --- Data Persistence Methods ---
 
+    async findRowIndexById(spreadsheetId: string, title: string, id: string): Promise<number | null> {
+        const values = await this.service.getValues(spreadsheetId, `${title}!A:A`);
+        // values is any[][] where each inner array is a row's column A
+        const index = values.findIndex(row => row[0] === id);
+        return index !== -1 ? index + 1 : null; // 1-indexed for Sheets
+    }
+
+    async updateRow(spreadsheetId: string, title: string, rowIndex: number, values: any[]) {
+        return this.service.batchUpdateValues(spreadsheetId, [
+            {
+                range: `${title}!A${rowIndex}`,
+                values: [values]
+            }
+        ]);
+    }
+
     async appendToTable(spreadsheetId: string, title: string, values: any[][]) {
         return this.service.appendValues(spreadsheetId, `${title}!A1`, values);
     }
@@ -232,5 +248,41 @@ export class CashTagDB {
             account.createdAt.toISOString()
         ];
         return this.appendToTable(spreadsheetId, 'accounts', [row]);
+    }
+
+    async updatePerson(spreadsheetId: string, person: any) {
+        const rowIndex = await this.findRowIndexById(spreadsheetId, 'person', person.id);
+        if (!rowIndex) throw new Error('Person not found');
+        const row = [
+            person.id,
+            person.name,
+            person.relation,
+            person.createdAt.toISOString()
+        ];
+        return this.updateRow(spreadsheetId, 'person', rowIndex, row);
+    }
+
+    async updateCategory(spreadsheetId: string, category: any) {
+        const rowIndex = await this.findRowIndexById(spreadsheetId, 'category', category.id);
+        if (!rowIndex) throw new Error('Category not found');
+        const row = [
+            category.id,
+            category.name,
+            category.emoji || '',
+            category.createdAt.toISOString()
+        ];
+        return this.updateRow(spreadsheetId, 'category', rowIndex, row);
+    }
+
+    async updateSubcategory(spreadsheetId: string, subcategory: any) {
+        const rowIndex = await this.findRowIndexById(spreadsheetId, 'subcategory', subcategory.id);
+        if (!rowIndex) throw new Error('Subcategory not found');
+        const row = [
+            subcategory.id,
+            subcategory.parentCategoryId,
+            subcategory.name,
+            subcategory.createdAt.toISOString()
+        ];
+        return this.updateRow(spreadsheetId, 'subcategory', rowIndex, row);
     }
 }

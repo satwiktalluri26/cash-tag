@@ -94,12 +94,6 @@ export class CashTagDB {
                 type: 'CASH',
                 startingBalance: 0,
                 createdAt: new Date()
-            }),
-            this.addCategory(spreadsheetId, {
-                id: crypto.randomUUID(),
-                name: 'Food & Dining',
-                emoji: '🍔',
-                createdAt: new Date()
             })
         ]);
 

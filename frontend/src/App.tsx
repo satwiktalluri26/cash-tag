@@ -12,6 +12,7 @@ import Sources from "./pages/Sources";
 import Trends from "./pages/Trends";
 import Settings from "./pages/Settings";
 import InitializeSheet from "./pages/InitializeSheet";
+import Onboarding from "./pages/Onboarding";
 import Categories from "./pages/Categories";
 import People from "./pages/People";
 import Profile from "./pages/Profile";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/connect" element={<ConnectSheet />} />
             <Route path="/initialize" element={<InitializeSheet />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/add" element={<AddEntry />} />
             <Route path="/sources" element={<Sources />} />

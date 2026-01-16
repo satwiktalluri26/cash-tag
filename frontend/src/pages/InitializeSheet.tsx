@@ -50,7 +50,7 @@ export default function InitializeSheet() {
                     setProgress(100);
                     setStatus('success');
                     setMessage('Database verified!');
-                    complete(existingId, db.getSpreadsheetUrl(existingId));
+                    complete(existingId, db.getSpreadsheetUrl(existingId), false);
                     return;
                 } else {
                     // If invalid, maybe we should offer to fix it? 
@@ -71,7 +71,7 @@ export default function InitializeSheet() {
 
             setStatus('success');
             setMessage('Database created successfully!');
-            complete(newId, db.getSpreadsheetUrl(newId));
+            complete(newId, db.getSpreadsheetUrl(newId), true);
         } catch (err: any) {
             console.error('Initialization error:', err);
             setStatus('error');
@@ -80,11 +80,15 @@ export default function InitializeSheet() {
         }
     };
 
-    const complete = (id: string, url: string) => {
+    const complete = (id: string, url: string, isNew: boolean) => {
         connectSheet(id, url);
         setTimeout(() => {
             toast.success('Database ready!');
-            navigate('/dashboard');
+            if (isNew) {
+                navigate('/onboarding');
+            } else {
+                navigate('/dashboard');
+            }
         }, 1500);
     };
 

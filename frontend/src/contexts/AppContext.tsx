@@ -55,9 +55,11 @@ interface AppContextType {
   expenses: Expense[];
   balances: AccountBalance[];
   cachesWithBalances: CacheWithBalance[];
+  spreadsheetId: string | null;
+  spreadsheetUrl: string | null;
   login: (userData: { name: string; email: string; avatar?: string }, token: string) => void;
   logout: () => void;
-  connectSheet: (url: string) => void;
+  connectSheet: (id: string, url: string) => void;
   addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => void;
   addPerson: (name: string, relation: 'Self' | 'Friend' | 'Family') => Person;
   addCategory: (name: string, entryType: 'INCOME' | 'EXPENSE', color: string) => Category;
@@ -72,6 +74,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string; avatar?: string } | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
+  const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(null);
   const [people, setPeople] = useState<Person[]>(mockPeople);
   const [sources] = useState<Source[]>(mockSources);
   const [categories, setCategories] = useState<Category[]>(mockCategories);
@@ -99,9 +103,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsConnected(false);
     setUser(null);
     setAccessToken(null);
+    setSpreadsheetId(null);
+    setSpreadsheetUrl(null);
   };
 
-  const connectSheet = (_url: string) => {
+  const connectSheet = (id: string, url: string) => {
+    setSpreadsheetId(id);
+    setSpreadsheetUrl(url);
     setIsConnected(true);
   };
 
@@ -164,6 +172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isConnected,
       user,
       accessToken,
+      spreadsheetId,
+      spreadsheetUrl,
       people,
       sources,
       categories,

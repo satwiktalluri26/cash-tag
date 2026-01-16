@@ -1,16 +1,19 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
-import { Tag, TrendingUp, Wallet, Shield } from 'lucide-react';
+import { Tag, TrendingUp, Wallet, Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useApp();
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
+      setIsInitializing(true);
       try {
         const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
@@ -26,18 +29,20 @@ export default function Login() {
           tokenResponse.access_token
         );
 
-        toast.success('Signed in successfully!');
-        navigate('/connect');
+        toast.success('Signed in!');
+        navigate('/initialize');
       } catch (error) {
-        console.error('Failed to fetch user info:', error);
-        toast.error('Failed to get user information from Google');
+        console.error('Failed to initialize:', error);
+        toast.error('Failed to sign in');
+      } finally {
+        setIsInitializing(false);
       }
     },
     onError: (error) => {
       console.error('Login Failed:', error);
       toast.error('Google Sign-In failed');
     },
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
   });
 
   return (
@@ -72,9 +77,19 @@ export default function Login() {
               size="xl"
               className="w-full"
               onClick={() => handleGoogleLogin()}
+              disabled={isInitializing}
             >
-              <GoogleIcon />
-              Sign in with Google
+              {isInitializing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Initializing...
+                </>
+              ) : (
+                <>
+                  <GoogleIcon />
+                  Sign in with Google
+                </>
+              )}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               Connect your Google Sheet as a personal database

@@ -11,6 +11,7 @@ import AddEntry from "./pages/AddEntry";
 import Caches from "./pages/Caches";
 import Trends from "./pages/Trends";
 import Settings from "./pages/Settings";
+import InitializeSheet from "./pages/InitializeSheet";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/connect" element={<ConnectSheet />} />
+            <Route path="/initialize" element={<InitializeSheet />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/add" element={<AddEntry />} />
             <Route path="/caches" element={<Caches />} />

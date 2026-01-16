@@ -11,7 +11,7 @@ const Index = () => {
     if (isAuthenticated && isConnected) {
       navigate('/dashboard');
     } else if (isAuthenticated && !isConnected) {
-      navigate('/connect');
+      navigate('/initialize');
     }
   }, [isAuthenticated, isConnected, navigate]);
 

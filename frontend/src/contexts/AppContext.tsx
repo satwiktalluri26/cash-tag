@@ -1,51 +1,12 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from 'react';
 import type { Person, Source, Category, Subcategory, Expense, AccountBalance, CacheWithBalance } from '@/types/finance';
-
-// Mock data for demo
-const mockPeople: Person[] = [
-  { id: '1', name: 'Me', relation: 'Self', createdAt: new Date() },
-  { id: '2', name: 'Alex', relation: 'Friend', createdAt: new Date() },
-  { id: '3', name: 'Mom', relation: 'Family', createdAt: new Date() },
-];
-
-const mockSources: Source[] = [
-  { id: '1', name: 'Main Checking', type: 'BANK', createdAt: new Date() },
-  { id: '2', name: 'Credit Card', type: 'CARD', createdAt: new Date() },
-  { id: '3', name: 'Cash Wallet', type: 'CASH', createdAt: new Date() },
-];
-
-const mockCategories: Category[] = [
-  { id: '1', name: 'Food & Dining', entryType: 'EXPENSE', color: '#ef4444', createdAt: new Date() },
-  { id: '2', name: 'Transportation', entryType: 'EXPENSE', color: '#f97316', createdAt: new Date() },
-  { id: '3', name: 'Shopping', entryType: 'EXPENSE', color: '#8b5cf6', createdAt: new Date() },
-  { id: '4', name: 'Bills & Utilities', entryType: 'EXPENSE', color: '#06b6d4', createdAt: new Date() },
-  { id: '5', name: 'Salary', entryType: 'INCOME', color: '#22c55e', createdAt: new Date() },
-  { id: '6', name: 'Freelance', entryType: 'INCOME', color: '#10b981', createdAt: new Date() },
-];
-
-const mockSubcategories: Subcategory[] = [
-  { id: '1', parentCategoryId: '1', name: 'Groceries', createdAt: new Date() },
-  { id: '2', parentCategoryId: '1', name: 'Restaurants', createdAt: new Date() },
-  { id: '3', parentCategoryId: '1', name: 'Coffee', createdAt: new Date() },
-  { id: '4', parentCategoryId: '2', name: 'Gas', createdAt: new Date() },
-  { id: '5', parentCategoryId: '2', name: 'Public Transit', createdAt: new Date() },
-];
-
-const mockExpenses: Expense[] = [
-  { id: '1', date: new Date(), amount: 45.50, entryType: 'EXPENSE', categoryId: '1', subcategoryId: '1', sourceId: '1', peopleIds: ['1'], createdAt: new Date() },
-  { id: '2', date: new Date(), amount: 3200, entryType: 'INCOME', categoryId: '5', sourceId: '1', peopleIds: ['1'], createdAt: new Date() },
-  { id: '3', date: new Date(Date.now() - 86400000), amount: 28.00, entryType: 'EXPENSE', categoryId: '1', subcategoryId: '2', sourceId: '2', peopleIds: ['1', '2'], createdAt: new Date() },
-];
-
-const mockBalances: AccountBalance[] = [
-  { id: '1', sourceId: '1', date: new Date(), balance: 4250.00, calculatedFrom: 'SYSTEM', createdAt: new Date() },
-  { id: '2', sourceId: '2', date: new Date(), balance: -320.50, calculatedFrom: 'SYSTEM', createdAt: new Date() },
-  { id: '3', sourceId: '3', date: new Date(), balance: 85.00, calculatedFrom: 'SYSTEM', createdAt: new Date() },
-];
+import { CashTagDB } from '@/lib/cashTagDB';
 
 interface AppContextType {
   isAuthenticated: boolean;
   isConnected: boolean;
+  isLoading: boolean;
+  error: string | null;
   user: { name: string; email: string; avatar?: string } | null;
   accessToken: string | null;
   people: Person[];
@@ -60,9 +21,10 @@ interface AppContextType {
   login: (userData: { name: string; email: string; avatar?: string }, token: string) => void;
   logout: () => void;
   connectSheet: (id: string, url: string) => void;
-  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => void;
-  addPerson: (name: string, relation: 'Self' | 'Friend' | 'Family') => Person;
-  addCategory: (name: string, entryType: 'INCOME' | 'EXPENSE', color: string) => Category;
+  refreshData: () => Promise<void>;
+  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
+  addPerson: (name: string, relation: 'Self' | 'Friend' | 'Family') => Promise<Person>;
+  addCategory: (name: string, entryType: 'INCOME' | 'EXPENSE', color: string) => Promise<Category>;
   getMonthlyTotal: (type: 'INCOME' | 'EXPENSE') => number;
   getPersonalSpending: () => number;
 }
@@ -72,16 +34,22 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<{ name: string; email: string; avatar?: string } | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
   const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(null);
-  const [people, setPeople] = useState<Person[]>(mockPeople);
-  const [sources] = useState<Source[]>(mockSources);
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
-  const [subcategories] = useState<Subcategory[]>(mockSubcategories);
-  const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
-  const [balances] = useState<AccountBalance[]>(mockBalances);
+
+  const [people, setPeople] = useState<Person[]>([]);
+  const [sources, setSources] = useState<Source[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [balances, setBalances] = useState<AccountBalance[]>([]);
+
+  const db = useMemo(() => accessToken ? new CashTagDB(accessToken) : null, [accessToken]);
+
   const cachesWithBalances: CacheWithBalance[] = sources.map(source => {
     const latestBalance = balances
       .filter(b => b.sourceId === source.id)
@@ -91,6 +59,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentBalance: latestBalance?.balance || 0,
     };
   });
+
+  const refreshData = async () => {
+    if (!db || !spreadsheetId) return;
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [p, s, c, sub, e, b] = await Promise.all([
+        db.getPeople(spreadsheetId),
+        db.getAccounts(spreadsheetId),
+        db.getCategories(spreadsheetId),
+        db.getSubcategories(spreadsheetId),
+        db.getTransactions(spreadsheetId),
+        // balances are not yet implemented in getTableData but we can add them if needed
+        // For now, let's just use empty or implement it
+        Promise.resolve([]) // balances
+      ]);
+
+      setPeople(p);
+      setSources(s as Source[]);
+      setCategories(c);
+      setSubcategories(sub);
+      setExpenses(e);
+      // setBalances(b);
+    } catch (err: any) {
+      console.error('Failed to fetch data:', err);
+      setError(err.message || 'Failed to fetch data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isConnected && spreadsheetId && db) {
+      refreshData();
+    }
+  }, [isConnected, spreadsheetId, db]);
 
   const login = (userData: { name: string; email: string; avatar?: string }, token: string) => {
     setIsAuthenticated(true);
@@ -105,6 +110,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAccessToken(null);
     setSpreadsheetId(null);
     setSpreadsheetUrl(null);
+    setPeople([]);
+    setSources([]);
+    setCategories([]);
+    setSubcategories([]);
+    setExpenses([]);
+    setBalances([]);
   };
 
   const connectSheet = (id: string, url: string) => {
@@ -113,27 +124,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsConnected(true);
   };
 
-  const addExpense = (expense: Omit<Expense, 'id' | 'createdAt'>) => {
+  const addExpense = async (expense: Omit<Expense, 'id' | 'createdAt'>) => {
+    if (!db || !spreadsheetId) return;
+
     const newExpense: Expense = {
       ...expense,
       id: crypto.randomUUID(),
       createdAt: new Date(),
     };
+
+    // Update local state for immediate feedback
     setExpenses(prev => [newExpense, ...prev]);
+
+    try {
+      await db.addTransaction(spreadsheetId, newExpense);
+    } catch (err) {
+      console.error('Failed to save transaction:', err);
+      // Rollback? Or just show error
+      setError('Failed to save transaction to Google Sheets');
+    }
   };
 
-  const addPerson = (name: string, relation: 'Self' | 'Friend' | 'Family'): Person => {
+  const addPerson = async (name: string, relation: 'Self' | 'Friend' | 'Family'): Promise<Person> => {
     const newPerson: Person = {
       id: crypto.randomUUID(),
       name,
       relation,
       createdAt: new Date(),
     };
+
     setPeople(prev => [...prev, newPerson]);
+
+    if (db && spreadsheetId) {
+      try {
+        await db.addPerson(spreadsheetId, newPerson);
+      } catch (err) {
+        console.error('Failed to save person:', err);
+        setError('Failed to save person to Google Sheets');
+      }
+    }
     return newPerson;
   };
 
-  const addCategory = (name: string, entryType: 'INCOME' | 'EXPENSE', color: string): Category => {
+  const addCategory = async (name: string, entryType: 'INCOME' | 'EXPENSE', color: string): Promise<Category> => {
     const newCategory: Category = {
       id: crypto.randomUUID(),
       name,
@@ -141,7 +174,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       color,
       createdAt: new Date(),
     };
+
     setCategories(prev => [...prev, newCategory]);
+
+    if (db && spreadsheetId) {
+      try {
+        await db.addCategory(spreadsheetId, newCategory);
+      } catch (err) {
+        console.error('Failed to save category:', err);
+        setError('Failed to save category to Google Sheets');
+      }
+    }
     return newCategory;
   };
 
@@ -170,6 +213,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       isAuthenticated,
       isConnected,
+      isLoading,
+      error,
       user,
       accessToken,
       spreadsheetId,
@@ -184,6 +229,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       connectSheet,
+      refreshData,
       addExpense,
       addPerson,
       addCategory,

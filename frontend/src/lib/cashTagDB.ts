@@ -77,11 +77,140 @@ export class CashTagDB {
             ]);
         }
 
+        onProgress('Adding default data...', 95);
+        const meId = crypto.randomUUID();
+        const cashId = crypto.randomUUID();
+
+        await Promise.all([
+            this.addPerson(spreadsheetId, {
+                id: meId,
+                name: 'Me',
+                relation: 'Self',
+                createdAt: new Date()
+            }),
+            this.service.appendValues(spreadsheetId, 'accounts!A1', [[
+                cashId,
+                'Cash Wallet',
+                'CASH',
+                new Date().toISOString()
+            ]]),
+            this.addCategory(spreadsheetId, {
+                id: crypto.randomUUID(),
+                name: 'Food & Dining',
+                entryType: 'EXPENSE',
+                color: '#ef4444',
+                createdAt: new Date()
+            })
+        ]);
+
         onProgress('Done!', 100);
         return spreadsheetId;
     }
 
     getSpreadsheetUrl(spreadsheetId: string): string {
         return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    }
+
+    // --- Data Fetching Methods ---
+
+    async getTableData<T>(spreadsheetId: string, title: string, mapper: (row: any[]) => T): Promise<T[]> {
+        const values = await this.service.getValues(spreadsheetId, `${title}!A:Z`);
+        if (values.length <= 1) return []; // Only headers or empty
+        return values.slice(1).map(mapper);
+    }
+
+    async getTransactions(spreadsheetId: string) {
+        return this.getTableData(spreadsheetId, 'transactions', (row) => ({
+            id: row[0],
+            date: new Date(row[1]),
+            amount: parseFloat(row[2]),
+            entryType: row[3],
+            categoryId: row[4],
+            subcategoryId: row[5] || undefined,
+            sourceId: row[6],
+            peopleIds: row[7] ? row[7].split(',') : [],
+            createdAt: new Date(row[8]),
+            notes: row[9] || undefined
+        }));
+    }
+
+    async getAccounts(spreadsheetId: string) {
+        return this.getTableData(spreadsheetId, 'accounts', (row) => ({
+            id: row[0],
+            name: row[1],
+            type: row[2],
+            createdAt: new Date(row[3])
+        }));
+    }
+
+    async getPeople(spreadsheetId: string) {
+        return this.getTableData(spreadsheetId, 'person', (row) => ({
+            id: row[0],
+            name: row[1],
+            relation: row[2],
+            createdAt: new Date(row[3])
+        }));
+    }
+
+    async getCategories(spreadsheetId: string) {
+        return this.getTableData(spreadsheetId, 'category', (row) => ({
+            id: row[0],
+            name: row[1],
+            entryType: row[2],
+            color: row[3],
+            createdAt: new Date(row[4])
+        }));
+    }
+
+    async getSubcategories(spreadsheetId: string) {
+        return this.getTableData(spreadsheetId, 'subcategory', (row) => ({
+            id: row[0],
+            parentCategoryId: row[1],
+            name: row[2],
+            createdAt: new Date(row[3])
+        }));
+    }
+
+    // --- Data Persistence Methods ---
+
+    async appendToTable(spreadsheetId: string, title: string, values: any[][]) {
+        return this.service.appendValues(spreadsheetId, `${title}!A1`, values);
+    }
+
+    async addTransaction(spreadsheetId: string, transaction: any) {
+        const row = [
+            transaction.id,
+            transaction.date.toISOString(),
+            transaction.amount,
+            transaction.entryType,
+            transaction.categoryId,
+            transaction.subcategoryId || '',
+            transaction.sourceId,
+            transaction.peopleIds.join(','),
+            transaction.createdAt.toISOString(),
+            transaction.notes || ''
+        ];
+        return this.appendToTable(spreadsheetId, 'transactions', [row]);
+    }
+
+    async addPerson(spreadsheetId: string, person: any) {
+        const row = [
+            person.id,
+            person.name,
+            person.relation,
+            person.createdAt.toISOString()
+        ];
+        return this.appendToTable(spreadsheetId, 'person', [row]);
+    }
+
+    async addCategory(spreadsheetId: string, category: any) {
+        const row = [
+            category.id,
+            category.name,
+            category.entryType,
+            category.color,
+            category.createdAt.toISOString()
+        ];
+        return this.appendToTable(spreadsheetId, 'category', [row]);
     }
 }

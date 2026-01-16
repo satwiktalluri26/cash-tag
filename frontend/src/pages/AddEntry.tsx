@@ -33,7 +33,7 @@ import type { EntryType } from '@/types/finance';
 import { toast } from 'sonner';
 
 const CATEGORY_COLORS = [
-  '#ef4444', '#f97316', '#f59e0b', '#eab308', 
+  '#ef4444', '#f97316', '#f59e0b', '#eab308',
   '#84cc16', '#22c55e', '#10b981', '#14b8a6',
   '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
   '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
@@ -42,7 +42,7 @@ const CATEGORY_COLORS = [
 export default function AddEntry() {
   const navigate = useNavigate();
   const { categories, subcategories, sources, people, addExpense, addPerson, addCategory } = useApp();
-  
+
   const [entryType, setEntryType] = useState<EntryType>('EXPENSE');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -69,13 +69,13 @@ export default function AddEntry() {
 
   const isExpense = entryType === 'EXPENSE';
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!amount || !categoryId || !sourceId) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    addExpense({
+    const promise = addExpense({
       date,
       amount: parseFloat(amount),
       entryType,
@@ -86,42 +86,56 @@ export default function AddEntry() {
       notes: notes || undefined,
     });
 
-    toast.success(`${entryType === 'INCOME' ? 'Income' : 'Expense'} added!`);
+    toast.promise(promise, {
+      loading: 'Saving transaction...',
+      success: `${entryType === 'INCOME' ? 'Income' : 'Expense'} added!`,
+      error: 'Failed to save to Google Sheets',
+    });
+
+    await promise;
     navigate('/dashboard');
   };
 
   const togglePerson = (personId: string) => {
-    setSelectedPeople(prev => 
+    setSelectedPeople(prev =>
       prev.includes(personId)
         ? prev.filter(id => id !== personId)
         : [...prev, personId]
     );
   };
 
-  const handleAddPerson = () => {
+  const handleAddPerson = async () => {
     if (!newPersonName.trim()) {
       toast.error('Please enter a name');
       return;
     }
-    const newPerson = addPerson(newPersonName.trim(), newPersonRelation);
-    setSelectedPeople(prev => [...prev, newPerson.id]);
-    setNewPersonName('');
-    setNewPersonRelation('Friend');
-    setShowAddPerson(false);
-    toast.success('Person added!');
+    try {
+      const newPerson = await addPerson(newPersonName.trim(), newPersonRelation);
+      setSelectedPeople(prev => [...prev, newPerson.id]);
+      setNewPersonName('');
+      setNewPersonRelation('Friend');
+      setShowAddPerson(false);
+      toast.success('Person added!');
+    } catch (err) {
+      toast.error('Failed to add person');
+    }
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
       toast.error('Please enter a category name');
       return;
     }
-    const newCat = addCategory(newCategoryName.trim(), entryType, newCategoryColor);
-    setCategoryId(newCat.id);
-    setNewCategoryName('');
-    setNewCategoryColor(CATEGORY_COLORS[0]);
-    setShowAddCategory(false);
-    toast.success('Category added!');
+    try {
+      const newCat = await addCategory(newCategoryName.trim(), entryType, newCategoryColor);
+      setCategoryId(newCat.id);
+      setNewCategoryName('');
+      setNewCategoryColor(CATEGORY_COLORS[0]);
+      setShowAddCategory(false);
+      toast.success('Category added!');
+    } catch (err) {
+      toast.error('Failed to add category');
+    }
   };
 
   return (
@@ -180,8 +194,8 @@ export default function AddEntry() {
               onChange={(e) => setAmount(e.target.value)}
               className={cn(
                 "h-16 pl-10 text-3xl font-semibold border-2 transition-colors",
-                isExpense 
-                  ? "focus:border-expense" 
+                isExpense
+                  ? "focus:border-expense"
                   : "focus:border-income"
               )}
             />
@@ -192,9 +206,9 @@ export default function AddEntry() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Category</Label>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="h-7 text-xs text-primary"
               onClick={() => setShowAddCategory(true)}
             >
@@ -213,8 +227,8 @@ export default function AddEntry() {
               {filteredCategories.map(cat => (
                 <SelectItem key={cat.id} value={cat.id}>
                   <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
+                    <div
+                      className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: cat.color }}
                     />
                     {cat.name}
@@ -295,9 +309,9 @@ export default function AddEntry() {
               <Users className="w-4 h-4" />
               People
             </Label>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="h-7 text-xs text-primary"
               onClick={() => setShowAddPerson(true)}
             >

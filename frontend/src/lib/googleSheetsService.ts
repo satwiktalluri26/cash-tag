@@ -88,4 +88,24 @@ export class GoogleSheetsService {
             body: JSON.stringify({ requests }),
         });
     }
+
+    /**
+     * Gets values from a specific range.
+     */
+    async getValues(spreadsheetId: string, range: string): Promise<any[][]> {
+        const data = await this.fetchGoogleApi(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`);
+        return data.values || [];
+    }
+
+    /**
+     * Appends values to a specific range.
+     */
+    async appendValues(spreadsheetId: string, range: string, values: any[][]) {
+        return this.fetchGoogleApi(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=RAW`, {
+            method: 'POST',
+            body: JSON.stringify({
+                values,
+            }),
+        });
+    }
 }
